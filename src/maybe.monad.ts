@@ -17,14 +17,14 @@ export class Maybe<T> {
     }
 
     static run<R>(gen: IterableIterator<Maybe<R>>): Maybe<R> {
-        let lastValue;
-        while (true) {
-            const result: IteratorResult<Maybe<R>> = gen.next(lastValue);
-            if (result.done || result.value.value === null) {
+        function step(value?) {
+            const result = gen.next(value);
+            if (result.done) {
                 return result.value;
             }
-            lastValue = result.value.value;
+            return result.value.flatMap(step);
         }
+        return step();
     }
 
     map<R>(f: (wrapped: T) => R): Maybe<R> {
