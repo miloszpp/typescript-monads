@@ -13,10 +13,27 @@ findEmployeeButtonEl.addEventListener("click", () => {
 });
 
 function getSupervisorName(maybeEnteredId: Maybe<string>): Maybe<string> {
-    return maybeEnteredId
-        .flatMap(employeeIdString => Maybe.fromValue(parseInt(employeeIdString)))
-        .flatMap(employeeId => repository.findById(employeeId))
-        .flatMap(employee => employee.supervisorId)
-        .flatMap(supervisorId => repository.findById(supervisorId))
-        .map(supervisor => supervisor.name);
+    return Maybe.run(function* () {
+        const enteredIdStr = yield maybeEnteredId;
+        const enteredId = parseInt(enteredIdStr);
+        const employee = yield repository.findById(enteredId);
+        const supervisorId = yield employee.supervisorId;
+        const supervisor = yield repository.findById(supervisorId);
+        return Maybe.some(supervisor.name);
+    }());
 }
+
+function* numbers(): IterableIterator<number> {
+    console.log('Inside numbers; start');1
+    yield 1;
+    console.log('Inside numbers; after first yield');
+    yield 2;
+    console.log('Inside numbers; end');
+}
+
+const numbersGenerator = numbers();
+console.log('Outside of numbers');
+console.log(numbersGenerator.next());
+console.log('Outside of numbers; after first next');
+console.log(numbersGenerator.next());
+console.log('Outside of numbers; after second next');

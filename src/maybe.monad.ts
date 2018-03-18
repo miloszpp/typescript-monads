@@ -16,6 +16,17 @@ export class Maybe<T> {
         return value ? Maybe.some(value) : Maybe.none<T>();
     }
 
+    static run<R>(gen: IterableIterator<Maybe<R>>): Maybe<R> {
+        let lastValue;
+        while (true) {
+            const result: IteratorResult<Maybe<R>> = gen.next(lastValue);
+            if (result.done || result.value.value === null) {
+                return result.value;
+            }
+            lastValue = result.value.value;
+        }
+    }
+
     map<R>(f: (wrapped: T) => R): Maybe<R> {
         if (this.value === null) {
             return Maybe.none<R>();
