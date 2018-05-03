@@ -1,5 +1,5 @@
 import { EmployeeRepository } from "./employee.repository";
-import { Maybe } from "./maybe.monad";
+import { Result } from "./result.monad";
 
 const employeeIdInputEl = document.getElementById("employeeIdInput") as HTMLInputElement;
 const findEmployeeButtonEl = document.getElementById("findEmployeeButton");
@@ -8,32 +8,24 @@ const searchResultsEl = document.getElementById("searchResults");
 const repository = new EmployeeRepository();
 
 findEmployeeButtonEl.addEventListener("click", () => {
-    const supervisorName = getSupervisorName(Maybe.fromValue(employeeIdInputEl.value));
-    searchResultsEl.innerText = `Supervisor name: ${supervisorName.getOrElse("could not find")}`;
+    const inputResult: Result<string, string> = employeeIdInputEl.value 
+        ? Result.success(employeeIdInputEl.value)
+        : Result.failure("No employee id provided");
+    const supervisorNameOrError = getSupervisorName(inputResult).get(error => error);
+    searchResultsEl.innerText = `Supervisor name: ${supervisorNameOrError}`;
 });
 
-function getSupervisorName(maybeEnteredId: Maybe<string>): Maybe<string> {
-    return Maybe.run(function* () {
-        const enteredIdStr = yield maybeEnteredId;
-        const enteredId = parseInt(enteredIdStr);
-        const employee = yield repository.findById(enteredId);
-        const supervisorId = yield employee.supervisorId;
-        const supervisor = yield repository.findById(supervisorId);
-        return Maybe.some(supervisor.name);
-    }());
+function getSupervisorName(enteredIdResult: Result<string, string>): Result<string, string> {
+    return enteredIdResult
+        .flatMap(safeParseInt)
+        .flatMap(employeeId => repository.findById(employeeId))
+        .flatMap(employee => employee.supervisorId)
+        .flatMap(supervisorId => repository.findById(supervisorId))
+        .map(supervisor => supervisor.name);
 }
 
-function* numbers(): IterableIterator<number> {
-    console.log('Inside numbers; start');1
-    yield 1;
-    console.log('Inside numbers; after first yield');
-    yield 2;
-    console.log('Inside numbers; end');
+function safeParseInt(numberString: string): Result<number, string> {
+    const result = parseInt(numberString);
+    return isNaN(result)
+        ? Result.failure("Invalid number format") : Result.success(result);
 }
-
-const numbersGenerator = numbers();
-console.log('Outside of numbers');
-console.log(numbersGenerator.next());
-console.log('Outside of numbers; after first next');
-console.log(numbersGenerator.next());
-console.log('Outside of numbers; after second next');
